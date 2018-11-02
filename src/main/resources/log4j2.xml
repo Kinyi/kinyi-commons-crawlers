@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="INFO">
+    <Properties>
+        <!--<Property name="pattern">%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>-->
+        <Property name="pattern">%d{yyyy-MM-dd_HH:mm:ss} [%t] %p %c{2}:%L: %m%n</Property>
+    </Properties>
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${pattern}"/>
+        </Console>
+        <!-- 这个会打印出所有的info及以下级别的信息，每次大小超过size，则这size大小的日志会自动存入按年份-月份建立的文件夹下面并进行压缩，作为存档-->
+        <RollingFile name="RollingFileInfo"
+                     fileName="${sys:user.home}/logs/${project.artifactId}/${sys:ds.commons.logging.procName}.log"
+                     filePattern="${sys:user.home}/logs/${project.artifactId}/${sys:ds.commons.logging.procName}.log.%d{yyyy-MM-dd}.%i">
+            <!--控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->
+            <ThresholdFilter level="info" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout pattern="${pattern}"/>
+            <Policies>
+                <!-- 每1天更新一次  interval基本单位对应于filePattern日期格式精确刻度 -->
+                <TimeBasedTriggeringPolicy modulate="true" interval="1"/>
+                <SizeBasedTriggeringPolicy size="100MB"/>
+            </Policies>
+            <!-- DefaultRolloverStrategy属性如不设置，则默认为最多同一文件夹下7个文件，这里设置了5 -->
+            <!--设置成max="5"之后，没有删除掉以前的日志，有可能是将每天的日志分成多个小文件导致删除策略没有生效，添加delete属性重新删除试试-->
+            <DefaultRolloverStrategy>
+                <Delete basePath="${sys:user.home}/logs/${project.artifactId}/" maxDepth="1">
+                    <IfFileName glob="${sys:ds.commons.logging.procName}.log.*" />
+                    <IfLastModified age="5d" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+    </Appenders>
+    <Loggers>
+        <!--<logger name="com.ctrip.framework.apollo" level="fatal"/>-->
+        <Root level="info">
+            <!--<AppenderRef ref="RollingFileInfo"/>-->
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>
