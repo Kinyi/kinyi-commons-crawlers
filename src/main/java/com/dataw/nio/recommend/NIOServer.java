@@ -15,8 +15,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * 运行有问题
- *
  * @author Kinyi_Chan
  * @since 2018-11-05
  */
@@ -29,7 +27,7 @@ public class NIOServer {
 
     public NIOServer() {
         try {
-            executorService = Executors.newFixedThreadPool(1);
+            executorService = Executors.newFixedThreadPool(5);
             serverChannel = ServerSocketChannel.open();
             serverChannel.configureBlocking(false);
             serverChannel.bind(new InetSocketAddress(PORT));
@@ -43,13 +41,15 @@ public class NIOServer {
     }
 
     private void clientHandle() throws IOException {
-        while (selector.select() > 0) {
+        int size;
+        while ((size = selector.select()) > 0) {
+            log.info("selector size : " + size);
             Set<SelectionKey> selectionKeys = selector.selectedKeys();
             Iterator<SelectionKey> iterator = selectionKeys.iterator();
             while (iterator.hasNext()) {
                 SelectionKey key = iterator.next();
                 if (key.isAcceptable()) {
-                    SocketChannel channel = ((ServerSocketChannel) key.channel()).accept();
+                    SocketChannel channel = serverChannel.accept();
                     channel.configureBlocking(false);
                     channel.register(selector, SelectionKey.OP_READ);
                 }
@@ -69,6 +69,7 @@ public class NIOServer {
 
     class ClientHandleThread implements Runnable {
         SocketChannel client;
+        boolean flag = true;
 
         public ClientHandleThread(SocketChannel client) {
             this.client = client;
@@ -77,29 +78,32 @@ public class NIOServer {
 
         @Override
         public void run() {
-            boolean flag = true;
             ByteBuffer buffer = ByteBuffer.allocate(50);
             try {
                 while (flag) {
                     buffer.clear();
-                    int readCount = client.read(buffer);
-                    String inputStr = new String(buffer.array(), 0, readCount);
-                    log.info("client say: " + inputStr);
-                    String outputStr = "[ECHO]" + inputStr + "\n";
-                    if ("exit".equalsIgnoreCase(inputStr)) {
-                        flag = false;
-                        outputStr = "bye bye...kiss";
+                    int readCount;
+                    if ((readCount = client.read(buffer)) != 0) {
+                        buffer.flip();
+                        String inputStr = new String(buffer.array(), 0, readCount).trim();
+                        log.info("client say: " + inputStr);
+                        String outputStr = "[ECHO]" + inputStr + "\n";
+                        if ("exit".equalsIgnoreCase(inputStr)) {
+                            flag = false;
+                            outputStr = "bye bye...kiss\n";
+                        }
+                        buffer.clear();
+                        buffer.put(outputStr.getBytes());
+                        buffer.flip();
+                        client.write(buffer);
                     }
-                    buffer.clear();
-                    buffer.put(outputStr.getBytes());
-                    buffer.flip();
-                    client.write(buffer);
                 }
             } catch (IOException e) {
                 log.error(e.getMessage(), e);
             } finally {
                 try {
                     client.close();
+                    log.info("client has close");
                 } catch (IOException e) {
                     log.error(e.getMessage(), e);
                 }
