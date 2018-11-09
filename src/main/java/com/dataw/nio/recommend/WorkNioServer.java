@@ -20,6 +20,7 @@ public class WorkNioServer {
      * 线程安全
      */
     private static List<SocketChannel> channels = Collections.synchronizedList(new ArrayList<>());
+    private static final int PORT = 8888;
 
     public static void main(String[] args) {
         HandlerSelectionKey handler = new HandlerSelectionKeyImpl();
@@ -27,10 +28,11 @@ public class WorkNioServer {
             //创建ServerSocketChannel
             ServerSocketChannel server = ServerSocketChannel.open();
             server.configureBlocking(false);
-            server.bind(new InetSocketAddress("localhost", 8888));
+            server.bind(new InetSocketAddress("localhost", PORT));
             //创建Selector
             Selector selector = Selector.open();
             server.register(selector, SelectionKey.OP_ACCEPT);
+            log.info("服务器端程序启动，该程序在" + PORT + "端口上进行监听...");
             //死循环,持续接收客户端连接
             while (true) {
                 //selector.select(); 是阻塞方法
