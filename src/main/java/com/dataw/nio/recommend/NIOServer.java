@@ -59,7 +59,6 @@ public class NIOServer {
                 }
                 iterator.remove();
             }
-            selector.selectedKeys().clear();
         }
     }
 
