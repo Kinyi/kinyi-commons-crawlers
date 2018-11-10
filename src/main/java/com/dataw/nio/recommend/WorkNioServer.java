@@ -9,10 +9,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 
 /**
  * @author Kinyi_Chan
@@ -20,10 +17,6 @@ import java.util.List;
  */
 @Slf4j
 public class WorkNioServer {
-    /**
-     * 线程安全
-     */
-    private static List<SocketChannel> channels = Collections.synchronizedList(new ArrayList<>());
     private static final int PORT = 8888;
 
     public static void main(String[] args) {
@@ -109,7 +102,6 @@ public class WorkNioServer {
         private void accept(ServerSocketChannel serverSocketChannel, Selector selector) throws IOException {
             SocketChannel socketChannel = serverSocketChannel.accept();
             socketChannel.configureBlocking(false);
-            channels.add(socketChannel);
             //将channel注册到Selector
             socketChannel.register(selector, SelectionKey.OP_READ);
         }
@@ -126,11 +118,17 @@ public class WorkNioServer {
             int readBytes = socketChannel.read(readBuffer);
             //客户端发送来的消息
             String msg = "";
+            int hashcode = socketChannel.hashCode();
             if (readBytes > 0) {
                 msg = new String(readBuffer.array(), 0, readBytes).trim();
-                log.info("客户端【" + socketChannel.hashCode() + "】发送来的消息: " + msg);
+                log.info("客户端【" + hashcode + "】发送来的消息: " + msg);
             }
-            write(socketChannel, msg);
+            if ("exit".equalsIgnoreCase(msg)) {
+                socketChannel.close();
+                log.info("客户端【" + hashcode + "】关闭连接");
+            } else {
+                write(socketChannel, msg);
+            }
         }
 
         /**
@@ -148,11 +146,7 @@ public class WorkNioServer {
             writeBuffer.put(responseByte);
             writeBuffer.flip();
             //响应客户端
-            for (SocketChannel channel : channels) {
-                if (socketChannel.equals(channel)) {
-                    channel.write(writeBuffer);
-                }
-            }
+            socketChannel.write(writeBuffer);
         }
     }
 }
