@@ -14,6 +14,10 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * @author Kinyi_Chan
+ * @since 2018-11-09
+ */
 @Slf4j
 public class WorkNioServer {
     /**
@@ -55,8 +59,8 @@ public class WorkNioServer {
     /**
      * SelectionKey 处理接口
      */
-    public static interface HandlerSelectionKey {
-        public void handler(SelectionKey key, Selector selector) throws IOException;
+    public interface HandlerSelectionKey {
+        void handler(SelectionKey key, Selector selector) throws IOException;
     }
 
     /**
