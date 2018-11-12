@@ -12,11 +12,13 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 
 /**
+ * single thread handle NIO
+ *
  * @author Kinyi_Chan
  * @since 2018-11-09
  */
 @Slf4j
-public class WorkNioServer {
+public class SingleNioServer {
     private static final int PORT = 8888;
 
     public static void main(String[] args) {
@@ -45,7 +47,7 @@ public class WorkNioServer {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
     }
 
@@ -70,7 +72,7 @@ public class WorkNioServer {
                     break;
                 case SelectionKey.OP_READ:
                     SocketChannel readSocketChannel = (SocketChannel) key.channel();
-                    read(readSocketChannel, selector);
+                    read(readSocketChannel);
                     break;
                 default:
                     break;
@@ -110,43 +112,29 @@ public class WorkNioServer {
          * 读取客户端发送过来的信息
          *
          * @param socketChannel
-         * @param selector
          * @throws IOException
          */
-        private void read(SocketChannel socketChannel, Selector selector) throws IOException {
-            ByteBuffer readBuffer = ByteBuffer.allocate(8192);
-            int readBytes = socketChannel.read(readBuffer);
-            //客户端发送来的消息
-            String msg = "";
+        private void read(SocketChannel socketChannel) throws IOException {
             int hashcode = socketChannel.hashCode();
+            ByteBuffer buffer = ByteBuffer.allocate(8192);
+            int readBytes = socketChannel.read(buffer);
             if (readBytes > 0) {
-                msg = new String(readBuffer.array(), 0, readBytes).trim();
+                //客户端发送来的消息
+                String msg = new String(buffer.array(), 0, readBytes).trim();
                 log.info("客户端【" + hashcode + "】发送来的消息: " + msg);
+                if ("exit".equalsIgnoreCase(msg)) {
+                    socketChannel.close();
+                    log.info("客户端【" + hashcode + "】关闭连接");
+                } else {
+                    //响应消息
+                    msg = "游客【" + socketChannel.hashCode() + "】say: " + msg + "\n";
+                    buffer.clear();
+                    buffer.put(msg.getBytes());
+                    buffer.flip();
+                    //响应客户端
+                    socketChannel.write(buffer);
+                }
             }
-            if ("exit".equalsIgnoreCase(msg)) {
-                socketChannel.close();
-                log.info("客户端【" + hashcode + "】关闭连接");
-            } else {
-                write(socketChannel, msg);
-            }
-        }
-
-        /**
-         * 响应客户端请求
-         *
-         * @param socketChannel
-         * @param
-         * @throws IOException
-         */
-        private void write(SocketChannel socketChannel, String msg) throws IOException {
-            msg = "游客【" + socketChannel.hashCode() + "】say: " + msg + "\n";
-            //响应消息
-            byte[] responseByte = msg.getBytes();
-            ByteBuffer writeBuffer = ByteBuffer.allocate(responseByte.length);
-            writeBuffer.put(responseByte);
-            writeBuffer.flip();
-            //响应客户端
-            socketChannel.write(writeBuffer);
         }
     }
 }

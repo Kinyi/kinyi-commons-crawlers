@@ -15,17 +15,20 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
+ * multi thread handle NIO
+ * <br>not completely work</br>
+ *
  * @author Kinyi_Chan
  * @since 2018-11-05
  */
 @Slf4j
-public class NIOServer {
+public class MultiNioServer {
     private static final int PORT = 8888;
     ExecutorService executorService;
     ServerSocketChannel serverChannel;
     Selector selector;
 
-    public NIOServer() {
+    public MultiNioServer() {
         try {
             executorService = Executors.newFixedThreadPool(5);
             serverChannel = ServerSocketChannel.open();
@@ -63,12 +66,12 @@ public class NIOServer {
     }
 
     public static void main(String[] args) {
-        new NIOServer();
+        new MultiNioServer();
     }
 
     class ClientHandleThread implements Runnable {
         SocketChannel client;
-        boolean flag = true;
+        boolean flag;
 
         public ClientHandleThread(SocketChannel client) {
             this.client = client;
@@ -79,33 +82,27 @@ public class NIOServer {
         public void run() {
             ByteBuffer buffer = ByteBuffer.allocate(50);
             try {
-                while (flag) {
+                int readCount;
+                if ((readCount = client.read(buffer)) != 0) {
+                    buffer.flip();
+                    String inputStr = new String(buffer.array(), 0, readCount).trim();
+                    log.info("client say: " + inputStr);
+                    String outputStr = "[ECHO]" + inputStr + "\n";
+                    if ("exit".equalsIgnoreCase(inputStr)) {
+                        outputStr = "bye bye...kiss\n";
+                        flag = true;
+                    }
                     buffer.clear();
-                    int readCount;
-                    if ((readCount = client.read(buffer)) != 0) {
-                        buffer.flip();
-                        String inputStr = new String(buffer.array(), 0, readCount).trim();
-                        log.info("client say: " + inputStr);
-                        String outputStr = "[ECHO]" + inputStr + "\n";
-                        if ("exit".equalsIgnoreCase(inputStr)) {
-                            flag = false;
-                            outputStr = "bye bye...kiss\n";
-                        }
-                        buffer.clear();
-                        buffer.put(outputStr.getBytes());
-                        buffer.flip();
-                        client.write(buffer);
+                    buffer.put(outputStr.getBytes());
+                    buffer.flip();
+                    client.write(buffer);
+                    if (flag) {
+                        client.close();
+                        log.info("client has close");
                     }
                 }
             } catch (IOException e) {
                 log.error(e.getMessage(), e);
-            } finally {
-                try {
-                    client.close();
-                    log.info("client has close");
-                } catch (IOException e) {
-                    log.error(e.getMessage(), e);
-                }
             }
         }
     }
